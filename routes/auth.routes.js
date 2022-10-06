@@ -1,5 +1,7 @@
 const router = require("express").Router();
 
+const axios = require("axios")
+
 // ℹ️ Handles password encryption
 const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
@@ -14,6 +16,8 @@ const Session = require("../models/Session.model");
 // Require necessary (isLoggedOut and isLoggedIn) middleware in order to control access to specific routes
 const isLoggedOut = require("../middleware/isLoggedOut");
 const isLoggedIn = require("../middleware/isLoggedIn");
+
+
 
 router.get("/session", (req, res) => {
   // we dont want to throw an error, and just maintain the user as null
@@ -34,13 +38,21 @@ router.get("/session", (req, res) => {
     });
 });
 
-router.post("/signup", isLoggedOut, (req, res) => {
-  const { username, password } = req.body;
 
-  if (!username) {
+router.post("/signup", isLoggedOut, (req, res) => {
+  const { userName, password, email } = req.body;
+  console.log(req.body)
+
+  if (!userName) {
     return res
       .status(400)
       .json({ errorMessage: "Please provide your username." });
+  }
+
+  if (!email) {
+    return res
+      .status(400)
+      .json({ errorMessage: "Please provide your Email." });
   }
 
   if (password.length < 8) {
@@ -62,7 +74,7 @@ router.post("/signup", isLoggedOut, (req, res) => {
   */
 
   // Search the database for a user with the username submitted in the form
-  User.findOne({ username }).then((found) => {
+  User.findOne({ userName }).then((found) => {
     // If the user is found, send the message username is taken
     if (found) {
       return res.status(400).json({ errorMessage: "Username already taken." });
@@ -75,11 +87,40 @@ router.post("/signup", isLoggedOut, (req, res) => {
       .then((hashedPassword) => {
         // Create a user and save it in the database
         return User.create({
-          username,
+          userName,
           password: hashedPassword,
+          email
         });
       })
       .then((user) => {
+
+        const data = {
+          service_id: 'service_1gf2saa',
+          template_id: 'template_djrcgwh',
+          user_id: 'ZO05l9FeQQYU7dzLz',
+          template_params: {
+              username: user.userName,
+              email:user.email
+          },
+          accessToken: "0HYAhyKOCsAu4SB8CGIHO"
+        };
+        const url = "https://api.emailjs.com/api/v1.0/email/send";
+        axios({
+          method: "post",
+          url,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          data: JSON.stringify(data),
+        })
+          .then((result) => {
+            console.log(result);
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+
+
         Session.create({
           user: user._id,
           createdAt: Date.now(),
@@ -102,10 +143,11 @@ router.post("/signup", isLoggedOut, (req, res) => {
   });
 });
 
-router.post("/login", isLoggedOut, (req, res, next) => {
-  const { username, password } = req.body;
 
-  if (!username) {
+router.post("/login", isLoggedOut, (req, res, next) => {
+  const { userName, password } = req.body;
+
+  if (!userName) {
     return res
       .status(400)
       .json({ errorMessage: "Please provide your username." });
@@ -120,7 +162,7 @@ router.post("/login", isLoggedOut, (req, res, next) => {
   }
 
   // Search the database for a user with the username submitted in the form
-  User.findOne({ username })
+  User.findOne({ userName })
     .then((user) => {
       // If the user isn't found, send the message that user provided wrong credentials
       if (!user) {
@@ -147,6 +189,7 @@ router.post("/login", isLoggedOut, (req, res, next) => {
       // return res.status(500).render("login", { errorMessage: err.message });
     });
 });
+
 
 router.delete("/logout", isLoggedIn, (req, res) => {
   Session.findByIdAndDelete(req.headers.authorization)

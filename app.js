@@ -20,8 +20,7 @@ const allRoutes = require("./routes/index.routes");
 app.use("/api", allRoutes);
 
 
-//REGISTRO DE RUTAS
-
+//Routes
 
 const galleryRouter = require('./routes/gallery.routes'); // <== has to be added
 app.use('/api', galleryRouter); // <== has to be added
